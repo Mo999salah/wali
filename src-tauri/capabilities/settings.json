@@ -6,6 +6,8 @@
   "permissions": [
     "allow-settings-snapshot",
     "allow-open-downloads-dir",
-    "allow-update-setting"
+    "allow-update-setting",
+    "allow-check-for-updates",
+    "allow-open-release-url"
   ]
 }

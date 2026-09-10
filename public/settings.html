@@ -197,6 +197,17 @@
       outline: 2px solid var(--mint);
       outline-offset: 2px;
     }
+    button.action:disabled {
+      opacity: 0.5;
+      pointer-events: none;
+    }
+
+    .check-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      align-items: stretch;
+    }
 
     .about {
       display: grid;
@@ -328,6 +339,7 @@
       <button type="button" data-section="general" aria-current="true">General</button>
       <button type="button" data-section="notifications">Notifications</button>
       <button type="button" data-section="downloads">Downloads</button>
+      <button type="button" data-section="updates">Updates</button>
       <button type="button" data-section="about">About</button>
     </nav>
   </aside>
@@ -384,6 +396,41 @@
             <p id="downloads-path" class="pref-copy path">…</p>
           </div>
           <button type="button" class="action" id="open-downloads">Open folder</button>
+        </li>
+      </ul>
+    </section>
+
+    <section id="updates" hidden>
+      <header class="page-head">
+        <h1>Updates</h1>
+        <p>Wali can check GitHub Releases for a newer stable version. It does not install packages itself.</p>
+      </header>
+      <ul class="prefs">
+        <li>
+          <div>
+            <div class="pref-title">Current version</div>
+            <p id="current-version" class="pref-copy">0.1.0</p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <div class="pref-title">Automatic update checks</div>
+            <p class="pref-copy">Check automatically when Wali starts.</p>
+          </div>
+          <label class="switch">
+            <input id="auto-update-checks" type="checkbox" role="switch" aria-label="Automatic update checks">
+            <i></i>
+          </label>
+        </li>
+        <li>
+          <div>
+            <div class="pref-title">Check for updates</div>
+            <p id="update-status" class="pref-copy">Look for a newer stable Wali release.</p>
+          </div>
+          <div class="check-actions">
+            <button type="button" class="action" id="check-updates">Check for updates</button>
+            <button type="button" class="action" id="view-release" hidden>View Release</button>
+          </div>
         </li>
       </ul>
     </section>
@@ -445,9 +492,11 @@
     invoke("settings_snapshot").then(function (data) {
       document.getElementById("sidebar-meta").textContent = "v" + data.version;
       document.getElementById("about-version").textContent = data.version;
+      document.getElementById("current-version").textContent = data.version;
       document.getElementById("downloads-path").textContent = data.downloadsDir;
       document.getElementById("close-to-tray").checked = data.closeToTray;
       document.getElementById("desktop-notifications").checked = data.desktopNotifications;
+      document.getElementById("auto-update-checks").checked = data.autoUpdateChecks;
     }).catch(function (err) {
       showError(String(err));
     });
@@ -463,6 +512,41 @@
     }
     bindToggle("close-to-tray", "closeToTray");
     bindToggle("desktop-notifications", "desktopNotifications");
+    bindToggle("auto-update-checks", "autoUpdateChecks");
+
+    var releaseUrl = "";
+    var checkBtn = document.getElementById("check-updates");
+    var viewBtn = document.getElementById("view-release");
+    var statusEl = document.getElementById("update-status");
+
+    checkBtn.addEventListener("click", function () {
+      checkBtn.disabled = true;
+      viewBtn.hidden = true;
+      releaseUrl = "";
+      statusEl.textContent = "Checking…";
+      invoke("check_for_updates").then(function (result) {
+        if (result && result.status === "available" && result.version && result.htmlUrl) {
+          statusEl.textContent = "Wali " + result.version + " is available.";
+          releaseUrl = result.htmlUrl;
+          viewBtn.hidden = false;
+        } else {
+          statusEl.textContent = "Wali is up to date.";
+        }
+      }).catch(function () {
+        statusEl.textContent = "Could not check for updates. Try again later.";
+      }).then(function () {
+        checkBtn.disabled = false;
+      });
+    });
+
+    viewBtn.addEventListener("click", function () {
+      if (!releaseUrl) {
+        return;
+      }
+      invoke("open_release_url", { url: releaseUrl }).catch(function () {
+        statusEl.textContent = "Could not check for updates. Try again later.";
+      });
+    });
   </script>
 </body>
 </html>

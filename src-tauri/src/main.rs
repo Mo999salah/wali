@@ -1,11 +1,14 @@
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Mutex;
 
 use serde::{Deserialize, Serialize};
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::webview::{DownloadEvent, NewWindowResponse, PageLoadEvent, WebviewWindowBuilder};
 use tauri::{include_image, Manager, Url, WebviewUrl};
+
+mod updates;
 
 const APP_NAME: &str = "Wali";
 const APP_ID: &str = "io.github.mo999salah.wali";
@@ -15,10 +18,12 @@ const WHATSAPP_HOST: &str = "web.whatsapp.com";
 const WHATSAPP_ORIGIN: &str = "https://web.whatsapp.com";
 
 #[derive(Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", default)]
 struct PrefsFile {
     close_to_tray: bool,
     desktop_notifications: bool,
+    auto_update_checks: bool,
+    last_notified_version: Option<String>,
 }
 
 impl Default for PrefsFile {
@@ -26,6 +31,8 @@ impl Default for PrefsFile {
         Self {
             close_to_tray: true,
             desktop_notifications: true,
+            auto_update_checks: true,
+            last_notified_version: None,
         }
     }
 }
@@ -37,6 +44,8 @@ fn parse_prefs_json(raw: &str) -> PrefsFile {
 struct Prefs {
     close_to_tray: AtomicBool,
     desktop_notifications: AtomicBool,
+    auto_update_checks: AtomicBool,
+    last_notified_version: Mutex<Option<String>>,
 }
 
 impl Prefs {
@@ -44,6 +53,8 @@ impl Prefs {
         Self {
             close_to_tray: AtomicBool::new(file.close_to_tray),
             desktop_notifications: AtomicBool::new(file.desktop_notifications),
+            auto_update_checks: AtomicBool::new(file.auto_update_checks),
+            last_notified_version: Mutex::new(file.last_notified_version),
         }
     }
 
@@ -51,6 +62,12 @@ impl Prefs {
         PrefsFile {
             close_to_tray: self.close_to_tray.load(Ordering::Relaxed),
             desktop_notifications: self.desktop_notifications.load(Ordering::Relaxed),
+            auto_update_checks: self.auto_update_checks.load(Ordering::Relaxed),
+            last_notified_version: self
+                .last_notified_version
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .clone(),
         }
     }
 }
@@ -88,6 +105,7 @@ struct SettingsSnapshot {
     downloads_dir: String,
     close_to_tray: bool,
     desktop_notifications: bool,
+    auto_update_checks: bool,
 }
 
 fn show_window(app: &tauri::AppHandle, label: &str) {
@@ -148,6 +166,7 @@ fn settings_snapshot(app: tauri::AppHandle) -> Result<SettingsSnapshot, String> 
         downloads_dir: downloads_dir(&app).display().to_string(),
         close_to_tray: prefs.close_to_tray,
         desktop_notifications: prefs.desktop_notifications,
+        auto_update_checks: prefs.auto_update_checks,
     })
 }
 
@@ -157,6 +176,7 @@ fn update_setting(app: tauri::AppHandle, key: String, value: bool) -> Result<(),
     match key.as_str() {
         "closeToTray" => prefs.close_to_tray.store(value, Ordering::Relaxed),
         "desktopNotifications" => prefs.desktop_notifications.store(value, Ordering::Relaxed),
+        "autoUpdateChecks" => prefs.auto_update_checks.store(value, Ordering::Relaxed),
         _ => return Err("unknown setting".into()),
     }
     save_prefs(&app, &prefs)
@@ -170,13 +190,53 @@ fn open_downloads_dir(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct UpdateCheck {
+    status: String,
+    version: Option<String>,
+    html_url: Option<String>,
+}
+
+#[tauri::command]
+async fn check_for_updates() -> Result<UpdateCheck, String> {
+    let result =
+        tauri::async_runtime::spawn_blocking(|| updates::check_latest(env!("CARGO_PKG_VERSION")))
+            .await
+            .map_err(|_| "could not check for updates".to_string())?;
+    match result {
+        Ok(updates::Outcome::UpToDate) => Ok(UpdateCheck {
+            status: "upToDate".into(),
+            version: None,
+            html_url: None,
+        }),
+        Ok(updates::Outcome::Available { version, html_url }) => Ok(UpdateCheck {
+            status: "available".into(),
+            version: Some(version),
+            html_url: Some(html_url),
+        }),
+        Err(e) => {
+            eprintln!("update check: {e}");
+            Err("could not check for updates".into())
+        }
+    }
+}
+
+#[tauri::command]
+fn open_release_url(url: String) -> Result<(), String> {
+    if !updates::is_release_url(&url) {
+        return Err("invalid release url".into());
+    }
+    xdg_open(&url);
+    Ok(())
+}
+
 fn main() {
     println!("application start");
     #[cfg(target_os = "linux")]
     {
         gtk::glib::set_prgname(Some(APP_ID));
         gtk::glib::set_application_name(APP_NAME);
-        install_linux_desktop_entry();
     }
 
     tauri::Builder::default()
@@ -186,7 +246,9 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             settings_snapshot,
             open_downloads_dir,
-            update_setting
+            update_setting,
+            check_for_updates,
+            open_release_url
         ])
         .setup(|app| {
             app.manage(load_prefs(app.handle()));
@@ -361,6 +423,15 @@ fn main() {
                 })
                 .build(app)?;
 
+            if app
+                .state::<Prefs>()
+                .auto_update_checks
+                .load(Ordering::Relaxed)
+            {
+                let update_app = handle.clone();
+                std::thread::spawn(move || auto_check_updates(update_app));
+            }
+
             println!("main window created");
             Ok(())
         })
@@ -395,65 +466,8 @@ fn apply_native_linux_chrome(win: &tauri::WebviewWindow) {
     use gtk::prelude::GtkWindowExt;
     if let Ok(gtk_win) = win.gtk_window() {
         gtk_win.set_titlebar(Option::<&gtk::Widget>::None);
-        gtk_win.set_icon_name(Some(APP_ID));
-        if let Some(home) = std::env::var_os("HOME") {
-            let icon = PathBuf::from(home)
-                .join(".local/share/icons/hicolor/64x64/apps")
-                .join(format!("{APP_ID}.png"));
-            let _ = gtk_win.set_icon_from_file(icon);
-        }
+        gtk_win.set_icon_name(Some("wali"));
     }
-}
-
-#[cfg(target_os = "linux")]
-fn install_linux_desktop_entry() {
-    let Ok(home) = std::env::var("HOME") else {
-        return;
-    };
-    let data = PathBuf::from(home).join(".local/share");
-    let icons = [
-        (32, include_bytes!("../icons/32x32.png").as_slice()),
-        (48, include_bytes!("../icons/48x48.png").as_slice()),
-        (64, include_bytes!("../icons/64x64.png").as_slice()),
-        (128, include_bytes!("../icons/128x128.png").as_slice()),
-        (256, include_bytes!("../icons/256x256.png").as_slice()),
-        (512, include_bytes!("../icons/512x512.png").as_slice()),
-    ];
-    for (size, bytes) in icons {
-        let dir = data.join(format!("icons/hicolor/{size}x{size}/apps"));
-        if std::fs::create_dir_all(&dir).is_err() {
-            continue;
-        }
-        let dest = dir.join(format!("{APP_ID}.png"));
-        let _ = std::fs::write(&dest, bytes);
-    }
-
-    let Ok(exe) = std::env::current_exe() else {
-        return;
-    };
-    let apps = data.join("applications");
-    if std::fs::create_dir_all(&apps).is_err() {
-        return;
-    }
-    let desktop = format!(
-        "[Desktop Entry]\nType=Application\nName={APP_NAME}\nComment=Unofficial WhatsApp client for Linux\nExec={}\nIcon={APP_ID}\nTerminal=false\nCategories=Network;InstantMessaging;\nStartupWMClass={APP_ID}\nStartupNotify=true\n",
-        exe.display()
-    );
-    let _ = std::fs::write(apps.join(format!("{APP_ID}.desktop")), desktop);
-    let _ = std::process::Command::new("update-desktop-database")
-        .arg(&apps)
-        .stdin(std::process::Stdio::null())
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status();
-    let hicolor = data.join("icons/hicolor");
-    let _ = std::process::Command::new("gtk-update-icon-cache")
-        .args(["-f", "-t"])
-        .arg(&hicolor)
-        .stdin(std::process::Stdio::null())
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status();
 }
 
 fn xdg_open(target: &str) {
@@ -517,6 +531,59 @@ fn desktop_notify(title: String, body: String) {
     });
 }
 
+fn auto_check_updates(app: tauri::AppHandle) {
+    match updates::check_latest(env!("CARGO_PKG_VERSION")) {
+        Ok(updates::Outcome::Available { version, html_url }) => {
+            let prefs = app.state::<Prefs>();
+            {
+                let last = prefs
+                    .last_notified_version
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner());
+                if last.as_deref() == Some(version.as_str()) {
+                    return;
+                }
+            }
+            {
+                *prefs
+                    .last_notified_version
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner()) = Some(version.clone());
+            }
+            if let Err(e) = save_prefs(&app, &prefs) {
+                eprintln!("update check persist: {e}");
+            }
+            notify_update_available(version, html_url);
+        }
+        Ok(updates::Outcome::UpToDate) => {}
+        Err(e) => eprintln!("update check: {e}"),
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn notify_update_available(version: String, html_url: String) {
+    std::thread::spawn(move || {
+        let title = format!("Wali {version} is available");
+        let body = "A new version of Wali is ready to download.";
+        let mut n = notify_rust::Notification::new();
+        n.summary(&title)
+            .body(body)
+            .appname(APP_NAME)
+            .icon("wali")
+            .action("default", "View Release");
+        if let Ok(handle) = n.show() {
+            handle.wait_for_action(|action| {
+                if action == "default" && updates::is_release_url(&html_url) {
+                    xdg_open(&html_url);
+                }
+            });
+        }
+    });
+}
+
+#[cfg(not(target_os = "linux"))]
+fn notify_update_available(_version: String, _html_url: String) {}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -526,6 +593,8 @@ mod tests {
         let p = parse_prefs_json("");
         assert!(p.close_to_tray);
         assert!(p.desktop_notifications);
+        assert!(p.auto_update_checks);
+        assert_eq!(p.last_notified_version, None);
     }
 
     #[test]
@@ -533,6 +602,8 @@ mod tests {
         let p = parse_prefs_json(r#"{"closeToTray":false,"desktopNotifications":false}"#);
         assert!(!p.close_to_tray);
         assert!(!p.desktop_notifications);
+        assert!(p.auto_update_checks);
+        assert_eq!(p.last_notified_version, None);
     }
 
     fn url(s: &str) -> Url {

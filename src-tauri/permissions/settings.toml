@@ -10,5 +10,15 @@ commands.allow = ["open_downloads_dir"]
 
 [[permission]]
 identifier = "allow-update-setting"
-description = "Change Close to tray or Desktop notifications from the Settings window."
+description = "Change persisted Settings toggles from the Settings window."
 commands.allow = ["update_setting"]
+
+[[permission]]
+identifier = "allow-check-for-updates"
+description = "Query GitHub Releases for a newer Wali version."
+commands.allow = ["check_for_updates"]
+
+[[permission]]
+identifier = "allow-open-release-url"
+description = "Open a verified Wali GitHub release page in the default browser."
+commands.allow = ["open_release_url"]
