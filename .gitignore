@@ -1,0 +1,11 @@
+/src-tauri/target/
+/target/
+/src-tauri/gen/schemas
+.env
+.env.*
+*.log
+*.swp
+*~
+*.tmp
+*.bak
+core

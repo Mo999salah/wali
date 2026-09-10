@@ -1,0 +1,14 @@
+[[permission]]
+identifier = "allow-settings-snapshot"
+description = "Read the Settings snapshot for the local Settings window."
+commands.allow = ["settings_snapshot"]
+
+[[permission]]
+identifier = "allow-open-downloads-dir"
+description = "Open the system Downloads directory."
+commands.allow = ["open_downloads_dir"]
+
+[[permission]]
+identifier = "allow-update-setting"
+description = "Change Close to tray or Desktop notifications from the Settings window."
+commands.allow = ["update_setting"]

@@ -1,0 +1,11 @@
+{
+  "identifier": "settings",
+  "description": "Minimal IPC for the local Settings window only.",
+  "local": true,
+  "windows": ["settings"],
+  "permissions": [
+    "allow-settings-snapshot",
+    "allow-open-downloads-dir",
+    "allow-update-setting"
+  ]
+}

@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Settings</title>
+  <style>
+    :root {
+      --rail: #121314;
+      --paper: #1a1c1e;
+      --ink: #ecece8;
+      --quiet: #9aa19a;
+      --line: #2d3236;
+      --spot: #25282b;
+      --mint: #21c78a;
+      --danger: #d46565;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: var(--paper);
+      color: var(--ink);
+      color-scheme: dark;
+      font: 13.5px/1.45 "Noto Sans", Cantarell, "Liberation Sans", ui-sans-serif, sans-serif;
+    }
+
+    body {
+      display: flex;
+      min-height: 100%;
+    }
+
+    .skip {
+      position: absolute;
+      left: 8px;
+      top: -40px;
+      padding: 6px 10px;
+      background: var(--spot);
+      color: var(--ink);
+      z-index: 2;
+    }
+    .skip:focus { top: 8px; }
+
+    aside {
+      width: 232px;
+      flex-shrink: 0;
+      background: var(--rail);
+      border-right: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      padding: 18px 0 12px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 18px 16px;
+      margin: 0 0 8px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .brand img {
+      width: 32px;
+      height: 32px;
+      display: block;
+      border-radius: 7px;
+    }
+
+    .brand strong {
+      display: block;
+      font-size: 14px;
+      font-weight: 650;
+      letter-spacing: -0.01em;
+    }
+
+    .brand span {
+      display: block;
+      margin-top: 1px;
+      color: var(--quiet);
+      font-size: 11.5px;
+    }
+
+    nav {
+      display: flex;
+      flex-direction: column;
+      padding: 0 8px;
+      gap: 1px;
+    }
+
+    nav button {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      color: var(--ink);
+      text-align: start;
+      width: 100%;
+      padding: 9px 12px;
+      border-radius: 5px;
+      cursor: pointer;
+      font: inherit;
+      font-size: 13px;
+    }
+
+    nav button:hover { background: var(--spot); }
+    nav button:focus-visible {
+      outline: 2px solid var(--mint);
+      outline-offset: -2px;
+    }
+    nav button[aria-current="true"] {
+      background: var(--spot);
+      font-weight: 600;
+    }
+
+    .content {
+      flex: 1;
+      min-width: 0;
+      overflow: auto;
+      padding: 28px 32px 36px;
+    }
+
+    section[hidden] { display: none; }
+
+    .page-head {
+      margin: 0 0 22px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .page-head h1 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 650;
+      letter-spacing: -0.02em;
+    }
+
+    .page-head p {
+      margin: 5px 0 0;
+      color: var(--quiet);
+      max-width: 42em;
+    }
+
+    .prefs {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .prefs li {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 24px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .prefs li:first-child { padding-top: 2px; }
+
+    .pref-title {
+      font-weight: 600;
+      font-size: 13.5px;
+    }
+
+    .pref-copy {
+      margin: 3px 0 0;
+      color: var(--quiet);
+      font-size: 12.5px;
+      max-width: 36em;
+    }
+
+    .path {
+      font-family: "Noto Sans Mono", ui-monospace, "Liberation Mono", monospace;
+      font-size: 12px;
+      color: var(--ink);
+      word-break: break-all;
+    }
+
+    button.action {
+      appearance: none;
+      flex-shrink: 0;
+      margin-top: 1px;
+      border: 1px solid var(--line);
+      background: var(--rail);
+      color: var(--ink);
+      border-radius: 4px;
+      padding: 6px 11px;
+      font: inherit;
+      font-size: 12.5px;
+      cursor: pointer;
+    }
+
+    button.action:hover { background: var(--spot); }
+    button.action:focus-visible {
+      outline: 2px solid var(--mint);
+      outline-offset: 2px;
+    }
+
+    .about {
+      display: grid;
+      grid-template-columns: 56px 1fr;
+      gap: 14px 16px;
+      align-items: center;
+      margin: 0 0 28px;
+    }
+
+    .about img {
+      width: 56px;
+      height: 56px;
+      border-radius: 12px;
+      display: block;
+    }
+
+    .about h1 {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 650;
+      letter-spacing: -0.03em;
+    }
+
+    .about p {
+      margin: 3px 0 0;
+      color: var(--quiet);
+    }
+
+    .facts {
+      display: grid;
+      grid-template-columns: 7.5rem 1fr;
+      column-gap: 16px;
+      row-gap: 11px;
+      margin: 0;
+    }
+
+    .facts dt {
+      margin: 0;
+      color: var(--quiet);
+      font-size: 12.5px;
+    }
+
+    .facts dd {
+      margin: 0;
+      font-size: 13.5px;
+    }
+
+    .note {
+      margin: 28px 0 0;
+      padding-top: 14px;
+      border-top: 1px solid var(--line);
+      color: var(--quiet);
+      font-size: 12.5px;
+    }
+
+    .err {
+      color: var(--danger);
+      margin: 0 0 14px;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      nav button, button.action, .switch i {
+        transition: background-color 160ms linear, transform 160ms linear;
+      }
+    }
+
+    .switch {
+      position: relative;
+      flex-shrink: 0;
+      width: 38px;
+      height: 22px;
+      margin-top: 1px;
+    }
+
+    .switch input {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      margin: 0;
+      cursor: pointer;
+    }
+
+    .switch i {
+      display: block;
+      width: 100%;
+      height: 100%;
+      border-radius: 11px;
+      background: #3a3f44;
+      pointer-events: none;
+    }
+
+    .switch i::after {
+      content: "";
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #d7dbd8;
+    }
+
+    .switch input:checked + i {
+      background: color-mix(in srgb, var(--mint) 55%, #1a3a2e);
+    }
+
+    .switch input:checked + i::after {
+      transform: translateX(16px);
+      background: var(--mint);
+    }
+
+    .switch input:focus-visible + i {
+      outline: 2px solid var(--mint);
+      outline-offset: 2px;
+    }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#content">Skip to content</a>
+  <aside>
+    <div class="brand">
+      <img src="wali-logo.png" alt="Wali">
+      <div>
+        <strong>Wali</strong>
+        <span id="sidebar-meta">v0.1.0</span>
+      </div>
+    </div>
+    <nav aria-label="Settings">
+      <button type="button" data-section="general" aria-current="true">General</button>
+      <button type="button" data-section="notifications">Notifications</button>
+      <button type="button" data-section="downloads">Downloads</button>
+      <button type="button" data-section="about">About</button>
+    </nav>
+  </aside>
+  <div class="content" id="content">
+    <p id="error" class="err" role="alert" hidden></p>
+
+    <section id="general">
+      <header class="page-head">
+        <h1>General</h1>
+        <p>When on, closing the main window hides Wali instead of quitting.</p>
+      </header>
+      <ul class="prefs">
+        <li>
+          <div>
+            <div class="pref-title">Close to tray</div>
+            <p class="pref-copy">Closing the window keeps Wali in the tray. Quit from the tray menu.</p>
+          </div>
+          <label class="switch">
+            <input id="close-to-tray" type="checkbox" role="switch" aria-label="Close to tray">
+            <i></i>
+          </label>
+        </li>
+      </ul>
+    </section>
+
+    <section id="notifications" hidden>
+      <header class="page-head">
+        <h1>Notifications</h1>
+        <p>When on, incoming WhatsApp alerts are forwarded to the desktop notification service.</p>
+      </header>
+      <ul class="prefs">
+        <li>
+          <div>
+            <div class="pref-title">Desktop notifications</div>
+            <p class="pref-copy">Title and body from WhatsApp, shown by the system.</p>
+          </div>
+          <label class="switch">
+            <input id="desktop-notifications" type="checkbox" role="switch" aria-label="Desktop notifications">
+            <i></i>
+          </label>
+        </li>
+      </ul>
+    </section>
+
+    <section id="downloads" hidden>
+      <header class="page-head">
+        <h1>Downloads</h1>
+        <p>Files go to the XDG Downloads directory. Wali does not keep a separate folder.</p>
+      </header>
+      <ul class="prefs">
+        <li>
+          <div>
+            <div class="pref-title">Downloads folder</div>
+            <p id="downloads-path" class="pref-copy path">…</p>
+          </div>
+          <button type="button" class="action" id="open-downloads">Open folder</button>
+        </li>
+      </ul>
+    </section>
+
+    <section id="about" hidden>
+      <div class="about">
+        <img src="wali-logo.png" alt="">
+        <div>
+          <h1>Wali</h1>
+          <p>Unofficial WhatsApp client for Linux.</p>
+        </div>
+      </div>
+      <dl class="facts">
+        <dt>Version</dt>
+        <dd id="about-version">0.1.0</dd>
+        <dt>Built with</dt>
+        <dd>Tauri 2 · system WebKitGTK</dd>
+        <dt>Platform</dt>
+        <dd>Linux · Wayland first</dd>
+        <dt>Calling</dt>
+        <dd>Not currently supported</dd>
+      </dl>
+      <p class="note">Wali is not affiliated with WhatsApp or Meta.</p>
+    </section>
+  </div>
+  <script>
+    function invoke(cmd, args) {
+      var internals = window.__TAURI_INTERNALS__;
+      if (!internals || typeof internals.invoke !== "function") {
+        return Promise.reject(new Error("Tauri IPC unavailable"));
+      }
+      return internals.invoke(cmd, args || {});
+    }
+
+    function showError(message) {
+      var el = document.getElementById("error");
+      el.hidden = !message;
+      el.textContent = message || "";
+    }
+
+    document.querySelectorAll("nav button").forEach(function (button) {
+      button.addEventListener("click", function () {
+        var id = button.getAttribute("data-section");
+        document.querySelectorAll("nav button").forEach(function (item) {
+          item.setAttribute("aria-current", item === button ? "true" : "false");
+        });
+        document.querySelectorAll(".content section").forEach(function (section) {
+          section.hidden = section.id !== id;
+        });
+      });
+    });
+
+    document.getElementById("open-downloads").addEventListener("click", function () {
+      invoke("open_downloads_dir").catch(function (err) {
+        showError(String(err));
+      });
+    });
+
+    invoke("settings_snapshot").then(function (data) {
+      document.getElementById("sidebar-meta").textContent = "v" + data.version;
+      document.getElementById("about-version").textContent = data.version;
+      document.getElementById("downloads-path").textContent = data.downloadsDir;
+      document.getElementById("close-to-tray").checked = data.closeToTray;
+      document.getElementById("desktop-notifications").checked = data.desktopNotifications;
+    }).catch(function (err) {
+      showError(String(err));
+    });
+
+    function bindToggle(id, key) {
+      document.getElementById(id).addEventListener("change", function (event) {
+        var on = event.target.checked;
+        invoke("update_setting", { key: key, value: on }).catch(function (err) {
+          event.target.checked = !on;
+          showError(String(err));
+        });
+      });
+    }
+    bindToggle("close-to-tray", "closeToTray");
+    bindToggle("desktop-notifications", "desktopNotifications");
+  </script>
+</body>
+</html>
