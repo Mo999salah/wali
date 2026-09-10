@@ -1,7 +1,7 @@
 # Maintainer: Mohamad Salah <kozomakk@gmail.com>
 
 pkgname=wali-bin
-pkgver=0.1.0
+pkgver=0.1.1
 pkgrel=1
 pkgdesc='Lightweight unofficial WhatsApp desktop client for Linux'
 arch=('x86_64')
@@ -17,7 +17,7 @@ provides=('wali')
 conflicts=('wali')
 options=('!debug' '!strip')
 source=("https://github.com/Mo999salah/wali/releases/download/v${pkgver}/Wali_${pkgver}_amd64.deb")
-sha256sums=('e77685902c272850de75ccd8fe40773a2764f389d918418ecc7686f912732c1b')
+sha256sums=('80e5366a713e74171734a02a2cb7fee29e962f66afa3da3d15e2ac0283f70acf')
 noextract=("Wali_${pkgver}_amd64.deb")
 
 package() {
