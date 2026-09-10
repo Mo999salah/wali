@@ -2,6 +2,11 @@ name: Release
 
 on:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing vMAJOR.MINOR.PATCH tag to package and create a draft release for. Leave empty for packaging preflight only.
+        required: false
+        type: string
   push:
     tags:
       - "v*"
@@ -14,19 +19,61 @@ jobs:
     runs-on: ubuntu-22.04
     permissions:
       contents: read
+    outputs:
+      release_tag: ${{ steps.target.outputs.release_tag }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Verify tag matches Cargo.toml
-        if: github.event_name == 'push'
+      - name: Resolve release target
+        id: target
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PUSH_REF_NAME: ${{ github.ref_name }}
+          DISPATCH_TAG: ${{ github.event.inputs.release_tag }}
+          FALLBACK_REF: ${{ github.ref }}
         run: |
           set -euo pipefail
-          tag="${GITHUB_REF_NAME}"
-          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "tag must be vMAJOR.MINOR.PATCH, got: ${tag}"
+          if [[ "$EVENT_NAME" == "push" ]]; then
+            release_tag="$PUSH_REF_NAME"
+            checkout_ref="refs/tags/${release_tag}"
+          else
+            release_tag="${DISPATCH_TAG:-}"
+            release_tag="${release_tag#"${release_tag%%[![:space:]]*}"}"
+            release_tag="${release_tag%"${release_tag##*[![:space:]]}"}"
+            if [[ -n "$release_tag" ]]; then
+              checkout_ref="refs/tags/${release_tag}"
+            else
+              checkout_ref="$FALLBACK_REF"
+            fi
+          fi
+          if [[ -n "$release_tag" && ! "$release_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "tag must be vMAJOR.MINOR.PATCH, got: ${release_tag}"
             exit 1
           fi
+          {
+            echo "release_tag=${release_tag}"
+            echo "checkout_ref=${checkout_ref}"
+          } >> "$GITHUB_OUTPUT"
+          echo "release_tag=${release_tag}"
+          echo "checkout_ref=${checkout_ref}"
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.target.outputs.checkout_ref }}
+
+      - name: Report source
+        run: |
+          echo "release_tag=${{ steps.target.outputs.release_tag }}"
+          echo "checkout_ref=${{ steps.target.outputs.checkout_ref }}"
+          git rev-parse HEAD
+          git log -1 --oneline
+
+      - name: Verify tag matches Cargo.toml
+        if: steps.target.outputs.release_tag != ''
+        env:
+          RELEASE_TAG: ${{ steps.target.outputs.release_tag }}
+        run: |
+          set -euo pipefail
+          tag="$RELEASE_TAG"
           expected="${tag#v}"
           cargo_version="$(sed -n 's/^version = "\(.*\)"/\1/p' src-tauri/Cargo.toml | head -n1)"
           if [[ "$cargo_version" != "$expected" ]]; then
@@ -34,6 +81,7 @@ jobs:
             exit 1
           fi
           echo "version ${cargo_version} matches ${tag}"
+          echo "HEAD=$(git rev-parse HEAD)"
 
       - name: Install Linux dependencies
         run: |
@@ -129,7 +177,7 @@ jobs:
           if-no-files-found: error
 
   publish:
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    if: needs.package.outputs.release_tag != ''
     needs: package
     runs-on: ubuntu-22.04
     permissions:
@@ -144,9 +192,11 @@ jobs:
       - name: Create or update draft GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ needs.package.outputs.release_tag }}
         run: |
           set -euo pipefail
-          tag="${GITHUB_REF_NAME}"
+          tag="$RELEASE_TAG"
           shopt -s nullglob
           files=(dist/*.deb dist/*.rpm dist/SHA256SUMS)
           if [[ ${#files[@]} -lt 3 ]]; then
