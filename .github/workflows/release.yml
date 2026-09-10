@@ -1,0 +1,105 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Verify tag matches Cargo.toml
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "tag must be vMAJOR.MINOR.PATCH, got: ${tag}"
+            exit 1
+          fi
+          expected="${tag#v}"
+          cargo_version="$(sed -n 's/^version = "\(.*\)"/\1/p' src-tauri/Cargo.toml | head -n1)"
+          if [[ "$cargo_version" != "$expected" ]]; then
+            echo "tag ${tag} does not match Cargo.toml version ${cargo_version}"
+            exit 1
+          fi
+          echo "version ${cargo_version} matches ${tag}"
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libxdo-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            xdg-utils \
+            pkg-config \
+            rpm
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable 2026-09-03
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: "./src-tauri -> target"
+
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --version "^2"
+
+      - name: Build packages and create draft release
+        uses: tauri-apps/tauri-action@1deb371b0cd8bd54025b384f1cd735e725c4060f # v1.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: src-tauri
+          tauriScript: cargo tauri
+          args: --bundles deb,rpm
+          tagName: ${{ github.ref_name }}
+          releaseName: Wali ${{ github.ref_name }}
+          releaseDraft: true
+          prerelease: false
+          generateReleaseNotes: true
+          uploadUpdaterJson: false
+          uploadUpdaterSignatures: false
+          uploadPlainBinary: false
+
+      - name: Verify packages and upload SHA256SUMS
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if find src-tauri/target/release/bundle/appimage -name '*.AppImage' 2>/dev/null | grep -q .; then
+            echo "unexpected AppImage artifact"
+            exit 1
+          fi
+          deb="$(find src-tauri/target/release/bundle/deb -name '*.deb' -type f -printf '%p\n')"
+          rpm="$(find src-tauri/target/release/bundle/rpm -name '*.rpm' -type f -printf '%p\n')"
+          if [[ -z "$deb" || "$(printf '%s\n' "$deb" | wc -l)" -ne 1 || ! -s "$deb" ]]; then
+            echo "expected one non-empty .deb in bundle/deb"
+            exit 1
+          fi
+          if [[ -z "$rpm" || "$(printf '%s\n' "$rpm" | wc -l)" -ne 1 || ! -s "$rpm" ]]; then
+            echo "expected one non-empty .rpm in bundle/rpm"
+            exit 1
+          fi
+          work="$(mktemp -d)"
+          cp "$deb" "$rpm" "$work/"
+          (cd "$work" && sha256sum -- *.deb *.rpm) > SHA256SUMS
+          cat SHA256SUMS
+          gh release upload "${GITHUB_REF_NAME}" SHA256SUMS --clobber

@@ -1,6 +1,5 @@
 {
   "productName": "Wali",
-  "version": "0.1.0",
   "identifier": "io.github.mo999salah.wali",
   "build": {
     "frontendDist": "../public"
@@ -14,7 +13,10 @@
     }
   },
   "bundle": {
-    "active": false,
+    "active": true,
+    "targets": ["deb", "rpm"],
+    "createUpdaterArtifacts": false,
+    "category": "SocialNetworking",
     "icon": [
       "icons/16x16.png",
       "icons/22x22.png",
@@ -26,6 +28,14 @@
       "icons/256x256.png",
       "icons/512x512.png",
       "icons/icon.png"
-    ]
+    ],
+    "linux": {
+      "deb": {
+        "desktopTemplate": "linux/wali.desktop"
+      },
+      "rpm": {
+        "desktopTemplate": "linux/wali.desktop"
+      }
+    }
   }
 }
