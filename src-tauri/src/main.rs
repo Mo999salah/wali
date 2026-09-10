@@ -379,11 +379,17 @@ fn main() {
                     use webkit2gtk::glib::prelude::*;
                     use webkit2gtk::{
                         DeviceInfoPermissionRequest, NotificationExt,
-                        NotificationPermissionRequest, PermissionRequestExt,
+                        NotificationPermissionRequest, PermissionRequestExt, SettingsExt,
                         UserMediaPermissionRequest, WebViewExt,
                     };
 
-                    webview.inner().connect_permission_request(|view, request| {
+                    let view = webview.inner();
+                    if let Some(settings) = WebViewExt::settings(&view) {
+                        // Also needs WebKitGTK built with ENABLE_WEB_RTC; some distro builds disable it.
+                        settings.set_enable_webrtc(true);
+                    }
+
+                    view.connect_permission_request(|view, request| {
                         let uri = WebViewExt::uri(view)
                             .map(|s| s.to_string())
                             .unwrap_or_default();
@@ -399,7 +405,7 @@ fn main() {
                         true
                     });
 
-                    webview.inner().connect_show_notification(move |view, n| {
+                    view.connect_show_notification(move |view, n| {
                         let uri = WebViewExt::uri(view)
                             .map(|s| s.to_string())
                             .unwrap_or_default();
