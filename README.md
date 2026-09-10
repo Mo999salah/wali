@@ -52,24 +52,24 @@ instead of bundling a private Chromium runtime.
 
 ## Installation
 
-Download the **v0.1.0** package for your distribution from
+Download the **v0.1.1** package for your distribution from
 [GitHub Releases](https://github.com/Mo999salah/wali/releases).
 The packages below target **x86_64 / amd64** Linux systems.
 
 ### Debian / Ubuntu
 
-Download `Wali_0.1.0_amd64.deb`, then run this from its download directory:
+Download `Wali_0.1.1_amd64.deb`, then run this from its download directory:
 
 ```bash
-sudo apt install ./Wali_0.1.0_amd64.deb
+sudo apt install ./Wali_0.1.1_amd64.deb
 ```
 
 ### Fedora / RPM
 
-Download `Wali-0.1.0-1.x86_64.rpm`, then run:
+Download `Wali-0.1.1-1.x86_64.rpm`, then run:
 
 ```bash
-sudo dnf install ./Wali-0.1.0-1.x86_64.rpm
+sudo dnf install ./Wali-0.1.1-1.x86_64.rpm
 ```
 
 ### Arch Linux / CachyOS

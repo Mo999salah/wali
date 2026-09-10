@@ -1,0 +1,10 @@
+[Desktop Entry]
+Categories=Network;
+Comment=Wali — unofficial Linux WhatsApp client
+Exec=wali
+Icon=wali
+Name=Wali
+StartupWMClass=io.github.mo999salah.wali
+StartupNotify=true
+Terminal=false
+Type=Application

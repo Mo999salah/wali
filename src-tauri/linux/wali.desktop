@@ -10,3 +10,4 @@ StartupWMClass=io.github.mo999salah.wali
 StartupNotify=true
 Terminal=false
 Type=Application
+NoDisplay=true

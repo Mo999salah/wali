@@ -31,10 +31,16 @@
     ],
     "linux": {
       "deb": {
-        "desktopTemplate": "linux/wali.desktop"
+        "desktopTemplate": "linux/wali.desktop",
+        "files": {
+          "/usr/share/applications/io.github.mo999salah.wali.desktop": "linux/io.github.mo999salah.wali.desktop"
+        }
       },
       "rpm": {
-        "desktopTemplate": "linux/wali.desktop"
+        "desktopTemplate": "linux/wali.desktop",
+        "files": {
+          "/usr/share/applications/io.github.mo999salah.wali.desktop": "linux/io.github.mo999salah.wali.desktop"
+        }
       }
     }
   }

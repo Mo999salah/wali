@@ -40,6 +40,11 @@
     <category>Network</category>
   </categories>
   <releases>
+    <release version="0.1.1" date="2026-09-10">
+      <description>
+        <p>Install a Wayland-matching desktop entry so KWin shows the Wali icon.</p>
+      </description>
+    </release>
     <release version="0.1.0" date="2026-09-10">
       <description>
         <p>Initial stable release.</p>

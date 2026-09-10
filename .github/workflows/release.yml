@@ -155,9 +155,11 @@ jobs:
           rpm_list="$(rpm -qlp "$rpm")"
           echo "$deb_list" | grep -q 'usr/bin/wali'
           echo "$deb_list" | grep -q 'Wali.desktop'
+          echo "$deb_list" | grep -q 'io.github.mo999salah.wali.desktop'
           echo "$deb_list" | grep -q 'hicolor/.*/apps/wali.png'
           echo "$rpm_list" | grep -q '/usr/bin/wali'
           echo "$rpm_list" | grep -q 'Wali.desktop'
+          echo "$rpm_list" | grep -q 'io.github.mo999salah.wali.desktop'
           echo "$rpm_list" | grep -q 'hicolor/.*/apps/wali.png'
           if echo "$deb_list$rpm_list" | grep -Ei 'IndexedDB|Local Storage|service.?worker'; then
             echo "package contains session-like paths"
