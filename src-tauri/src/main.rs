@@ -312,7 +312,11 @@ fn main() {
                     PageLoadEvent::Started => "started",
                     PageLoadEvent::Finished => "finished",
                 };
-                println!("page load {phase} {}", payload.url());
+                if cfg!(debug_assertions) {
+                    println!("page load {phase} {}", payload.url());
+                } else {
+                    println!("page load {phase}");
+                }
             })
             .on_navigation(|url| {
                 if is_whatsapp_url(url) {
@@ -352,7 +356,11 @@ fn main() {
                     }
                     DownloadEvent::Finished { url, path, success } => {
                         if !success {
-                            eprintln!("download failed {url} {path:?}");
+                            if cfg!(debug_assertions) {
+                                eprintln!("download failed {url} {path:?}");
+                            } else {
+                                eprintln!("download failed");
+                            }
                         }
                         true
                     }
@@ -513,12 +521,17 @@ fn apply_native_linux_chrome(win: &tauri::WebviewWindow) {
 }
 
 fn xdg_open(target: &str) {
-    let _ = std::process::Command::new("xdg-open")
+    if let Ok(mut child) = std::process::Command::new("xdg-open")
         .arg(target)
         .stdin(std::process::Stdio::null())
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
-        .spawn();
+        .spawn()
+    {
+        std::thread::spawn(move || {
+            let _ = child.wait();
+        });
+    }
 }
 
 fn safe_basename(name: &str) -> String {
