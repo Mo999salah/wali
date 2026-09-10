@@ -16,6 +16,33 @@ Wali is an unofficial Linux desktop client for WhatsApp Web, built with Tauri 2 
 - Local Settings window
 - Strict separation between WhatsApp Web and Tauri IPC
 
+## Installation
+
+Packages are published on [GitHub Releases](https://github.com/Mo999salah/wali/releases). Artifact names follow the version, for example `0.1.0`:
+
+- Debian: `wali_0.1.0_amd64.deb`
+- RPM: `wali-0.1.0-1.x86_64.rpm`
+
+### Debian / Ubuntu
+
+```bash
+sudo apt install ./wali_0.1.0_amd64.deb
+```
+
+### Fedora / RPM-based systems
+
+```bash
+sudo dnf install ./wali-0.1.0-1.x86_64.rpm
+```
+
+### Arch Linux / CachyOS
+
+No AUR package is available yet. Build Wali from source using the instructions below.
+
+## Updates
+
+Wali checks GitHub Releases for new stable versions by default and shows a desktop notification when an update is available. Automatic checks can be disabled in Settings. Wali does not silently install updates; installing a downloaded package remains under your control.
+
 ## Current limitations
 
 - WhatsApp voice and video calling is currently unsupported.
