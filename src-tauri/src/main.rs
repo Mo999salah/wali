@@ -419,9 +419,12 @@ fn main() {
             let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show, &settings, &quit])?;
             let icon = include_image!("icons/48x48.png");
+            let tray_dir = app.path().app_cache_dir()?;
+            std::fs::create_dir_all(&tray_dir)?;
 
             TrayIconBuilder::new()
                 .icon(icon)
+                .temp_dir_path(tray_dir)
                 .menu(&menu)
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "show" => show_window(app, MAIN_WINDOW),
