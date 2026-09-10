@@ -128,6 +128,18 @@ struct SettingsSnapshot {
     close_to_tray: bool,
     desktop_notifications: bool,
     auto_update_checks: bool,
+    is_flatpak: bool,
+}
+
+fn running_in_flatpak() -> bool {
+    flatpak_detected(
+        std::env::var("FLATPAK_ID").ok().as_deref(),
+        Path::new("/.flatpak-info").is_file(),
+    )
+}
+
+fn flatpak_detected(flatpak_id: Option<&str>, flatpak_info: bool) -> bool {
+    flatpak_id.is_some_and(|id| !id.is_empty()) || flatpak_info
 }
 
 fn show_window(app: &tauri::AppHandle, label: &str) {
@@ -189,6 +201,7 @@ fn settings_snapshot(app: tauri::AppHandle) -> Result<SettingsSnapshot, String> 
         close_to_tray: prefs.close_to_tray,
         desktop_notifications: prefs.desktop_notifications,
         auto_update_checks: prefs.auto_update_checks,
+        is_flatpak: running_in_flatpak(),
     })
 }
 
@@ -222,6 +235,9 @@ struct UpdateCheck {
 
 #[tauri::command]
 async fn check_for_updates() -> Result<UpdateCheck, String> {
+    if running_in_flatpak() {
+        return Err("updates are managed by Flatpak".into());
+    }
     let result =
         tauri::async_runtime::spawn_blocking(|| updates::check_latest(env!("CARGO_PKG_VERSION")))
             .await
@@ -448,10 +464,11 @@ fn main() {
                 })
                 .build(app)?;
 
-            if app
-                .state::<Prefs>()
-                .auto_update_checks
-                .load(Ordering::Relaxed)
+            if !running_in_flatpak()
+                && app
+                    .state::<Prefs>()
+                    .auto_update_checks
+                    .load(Ordering::Relaxed)
             {
                 let update_app = handle.clone();
                 std::thread::spawn(move || auto_check_updates(update_app));
@@ -708,5 +725,19 @@ mod tests {
         assert_eq!(safe_basename(".."), "download");
         assert_eq!(safe_basename(""), "download");
         assert_eq!(safe_basename("ok\nname.jpg"), "okname.jpg");
+    }
+
+    #[test]
+    fn flatpak_id_detects_runtime() {
+        assert!(flatpak_detected(Some("io.github.mo999salah.wali"), false));
+        assert!(!flatpak_detected(Some(""), false));
+        assert!(!flatpak_detected(None, false));
+    }
+
+    #[test]
+    fn flatpak_info_file_is_fallback() {
+        assert!(flatpak_detected(None, true));
+        assert!(flatpak_detected(Some(""), true));
+        assert!(!flatpak_detected(None, false));
     }
 }

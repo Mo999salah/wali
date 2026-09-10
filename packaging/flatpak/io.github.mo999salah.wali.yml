@@ -1,14 +1,11 @@
 # Local Flatpak validation manifest for Wali.
 # Do not submit this to Flathub from this milestone.
 #
-# Current tree is used as the application source (type: dir) so this branch
-# can be built before a later release tag includes these files.
-# A stable/Flathub build should replace the dir source with:
-#   - type: git
-#     url: https://github.com/Mo999salah/wali.git
-#     tag: v0.1.0
-#     commit: 5c6b18069e940f0ef4aa43f20d30e0891a7750cd
-# once that tag contains the packaging files, or a newer release tag/commit.
+# Current tree is used as the application source (type: dir).
+# v0.1.0 predates these packaging files and must stay immutable.
+# A future Flathub/stable manifest must replace type: dir with a fixed
+# upstream git tag + commit from the first Wali release created after
+# this Flatpak packaging has been merged into main.
 id: io.github.mo999salah.wali
 runtime: org.gnome.Platform
 runtime-version: "50"
@@ -17,7 +14,7 @@ sdk-extensions:
   - org.freedesktop.Sdk.Extension.rust-stable
 command: wali
 finish-args:
-  # WhatsApp Web and the GitHub update checker.
+  # WhatsApp Web. Native GitHub update checks also use network; Flatpak skips those.
   - --share=network
   # WebKitGTK / GTK shared-memory paths.
   - --share=ipc
@@ -32,6 +29,7 @@ finish-args:
   # StatusNotifier tray used by Wali.
   - --talk-name=org.kde.StatusNotifierWatcher
   # notify-rust talks to the session Notifications name, not a portal rewrite.
+  # Flathub review may later want a portal migration; do not broaden this now.
   - --talk-name=org.freedesktop.Notifications
   # tauri-plugin-single-instance owns identifier.SingleInstance on the session bus.
   - --own-name=io.github.mo999salah.wali.SingleInstance

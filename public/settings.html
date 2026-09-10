@@ -121,7 +121,8 @@
       padding: 28px 32px 36px;
     }
 
-    section[hidden] { display: none; }
+    section[hidden],
+    .prefs li[hidden] { display: none; }
 
     .page-head {
       margin: 0 0 22px;
@@ -403,7 +404,7 @@
     <section id="updates" hidden>
       <header class="page-head">
         <h1>Updates</h1>
-        <p>Wali can check GitHub Releases for a newer stable version. It does not install packages itself.</p>
+        <p id="updates-intro">Wali can check GitHub Releases for a newer stable version. It does not install packages itself.</p>
       </header>
       <ul class="prefs">
         <li>
@@ -412,7 +413,13 @@
             <p id="current-version" class="pref-copy">0.1.0</p>
           </div>
         </li>
-        <li>
+        <li id="updates-flatpak" hidden>
+          <div>
+            <div class="pref-title">Managed by Flatpak</div>
+            <p class="pref-copy">Updates for this installation are managed by Flatpak.</p>
+          </div>
+        </li>
+        <li id="updates-auto">
           <div>
             <div class="pref-title">Automatic update checks</div>
             <p class="pref-copy">Check automatically when Wali starts.</p>
@@ -422,7 +429,7 @@
             <i></i>
           </label>
         </li>
-        <li>
+        <li id="updates-manual">
           <div>
             <div class="pref-title">Check for updates</div>
             <p id="update-status" class="pref-copy">Look for a newer stable Wali release.</p>
@@ -497,6 +504,13 @@
       document.getElementById("close-to-tray").checked = data.closeToTray;
       document.getElementById("desktop-notifications").checked = data.desktopNotifications;
       document.getElementById("auto-update-checks").checked = data.autoUpdateChecks;
+      if (data.isFlatpak) {
+        document.getElementById("updates-intro").textContent =
+          "Updates for this installation are managed by Flatpak.";
+        document.getElementById("updates-flatpak").hidden = false;
+        document.getElementById("updates-auto").hidden = true;
+        document.getElementById("updates-manual").hidden = true;
+      }
     }).catch(function (err) {
       showError(String(err));
     });
