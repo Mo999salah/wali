@@ -46,6 +46,7 @@ struct Prefs {
     desktop_notifications: AtomicBool,
     auto_update_checks: AtomicBool,
     last_notified_version: Mutex<Option<String>>,
+    persist: Mutex<()>,
 }
 
 impl Prefs {
@@ -55,6 +56,7 @@ impl Prefs {
             desktop_notifications: AtomicBool::new(file.desktop_notifications),
             auto_update_checks: AtomicBool::new(file.auto_update_checks),
             last_notified_version: Mutex::new(file.last_notified_version),
+            persist: Mutex::new(()),
         }
     }
 
@@ -94,8 +96,28 @@ fn save_prefs(app: &tauri::AppHandle, prefs: &Prefs) -> Result<(), String> {
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
     }
+    persist_prefs(&path, prefs)
+}
+
+fn prefs_tmp_path(path: &Path) -> PathBuf {
+    let mut tmp = path.as_os_str().to_os_string();
+    tmp.push(".tmp");
+    PathBuf::from(tmp)
+}
+
+fn persist_prefs(path: &Path, prefs: &Prefs) -> Result<(), String> {
+    let _write = prefs.persist.lock().unwrap_or_else(|e| e.into_inner());
     let json = serde_json::to_string_pretty(&prefs.to_file()).map_err(|e| e.to_string())?;
-    std::fs::write(path, json).map_err(|e| e.to_string())
+    atomic_write(path, json.as_bytes())
+}
+
+fn atomic_write(path: &Path, bytes: &[u8]) -> Result<(), String> {
+    let tmp = prefs_tmp_path(path);
+    std::fs::write(&tmp, bytes).map_err(|e| e.to_string())?;
+    std::fs::rename(&tmp, path).map_err(|e| {
+        let _ = std::fs::remove_file(&tmp);
+        e.to_string()
+    })
 }
 
 #[derive(Serialize)]
@@ -604,6 +626,36 @@ mod tests {
         assert!(!p.desktop_notifications);
         assert!(p.auto_update_checks);
         assert_eq!(p.last_notified_version, None);
+    }
+
+    #[test]
+    fn persist_prefs_replaces_file_atomically() {
+        let dir = std::env::temp_dir().join(format!(
+            "wali-prefs-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("settings.json");
+        std::fs::write(&path, "stale").unwrap();
+        let prefs = Prefs::from_file(PrefsFile {
+            close_to_tray: false,
+            desktop_notifications: true,
+            auto_update_checks: false,
+            last_notified_version: Some("0.2.0".into()),
+        });
+        persist_prefs(&path, &prefs).unwrap();
+        let raw = std::fs::read_to_string(&path).unwrap();
+        let parsed = parse_prefs_json(&raw);
+        assert!(!parsed.close_to_tray);
+        assert!(parsed.desktop_notifications);
+        assert!(!parsed.auto_update_checks);
+        assert_eq!(parsed.last_notified_version.as_deref(), Some("0.2.0"));
+        assert!(!prefs_tmp_path(&path).exists());
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     fn url(s: &str) -> Url {
