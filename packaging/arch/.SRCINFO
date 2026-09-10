@@ -1,0 +1,20 @@
+pkgbase = wali-bin
+	pkgdesc = Lightweight unofficial WhatsApp desktop client for Linux
+	pkgver = 0.1.0
+	pkgrel = 1
+	url = https://github.com/Mo999salah/wali
+	arch = x86_64
+	license = MIT
+	depends = gtk3
+	depends = libayatana-appindicator
+	depends = webkit2gtk-4.1
+	depends = xdg-utils
+	provides = wali
+	conflicts = wali
+	noextract = Wali_0.1.0_amd64.deb
+	options = !debug
+	options = !strip
+	source = https://github.com/Mo999salah/wali/releases/download/v0.1.0/Wali_0.1.0_amd64.deb
+	sha256sums = e77685902c272850de75ccd8fe40773a2764f389d918418ecc7686f912732c1b
+
+pkgname = wali-bin

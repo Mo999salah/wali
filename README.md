@@ -37,7 +37,15 @@ sudo dnf install ./Wali-0.1.0-1.x86_64.rpm
 
 ### Arch Linux / CachyOS
 
-No AUR package is available yet. Build Wali from source using the instructions below.
+Build and install the repository-provided pacman package `wali-bin`:
+
+```bash
+git clone https://github.com/Mo999salah/wali.git
+cd wali/packaging/arch
+makepkg -si
+```
+
+To build Wali from source instead, see [Build](#build).
 
 ## Updates
 
