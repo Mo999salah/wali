@@ -16,3 +16,10 @@ core
 /packaging/arch/pkg/
 /packaging/arch/*.pkg.tar.*
 /packaging/arch/*.deb
+
+# flatpak-builder artifacts
+.flatpak-builder/
+/packaging/flatpak/.flatpak-builder/
+/packaging/flatpak/.build/
+/packaging/flatpak/repo/
+*.flatpak

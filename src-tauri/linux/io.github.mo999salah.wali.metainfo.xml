@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.mo999salah.wali</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>Wali</name>
+  <summary>Lightweight unofficial WhatsApp Web desktop client for Linux</summary>
+  <description>
+    <p>
+      Wali is an unofficial Linux desktop client that loads WhatsApp Web in a
+      native window using the system WebKitGTK engine.
+    </p>
+    <p>
+      It keeps a persistent session, provides a system tray, close-to-tray,
+      desktop notifications, Downloads-folder file saving, and a local Settings
+      window. WhatsApp Web itself is unchanged: Wali does not inject JavaScript
+      or CSS into the page and does not implement a custom WhatsApp protocol.
+    </p>
+    <p>
+      Wali is not affiliated with Meta or WhatsApp.
+    </p>
+  </description>
+  <url type="homepage">https://github.com/Mo999salah/wali</url>
+  <url type="bugtracker">https://github.com/Mo999salah/wali/issues</url>
+  <url type="vcs-browser">https://github.com/Mo999salah/wali</url>
+  <launchable type="desktop-id">io.github.mo999salah.wali.desktop</launchable>
+  <developer id="io.github.mo999salah">
+    <name>Mohamad Salah</name>
+  </developer>
+  <content_rating type="oars-1.1">
+    <content_attribute id="social-chat">intense</content_attribute>
+    <content_attribute id="social-audio">intense</content_attribute>
+    <content_attribute id="social-contacts">intense</content_attribute>
+  </content_rating>
+  <recommends>
+    <control>pointing</control>
+    <control>keyboard</control>
+  </recommends>
+  <categories>
+    <category>Network</category>
+  </categories>
+  <releases>
+    <release version="0.1.0" date="2026-09-10">
+      <description>
+        <p>Initial stable release.</p>
+      </description>
+    </release>
+  </releases>
+</component>

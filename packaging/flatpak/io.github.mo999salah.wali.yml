@@ -1,0 +1,85 @@
+# Local Flatpak validation manifest for Wali.
+# Do not submit this to Flathub from this milestone.
+#
+# Current tree is used as the application source (type: dir) so this branch
+# can be built before a later release tag includes these files.
+# A stable/Flathub build should replace the dir source with:
+#   - type: git
+#     url: https://github.com/Mo999salah/wali.git
+#     tag: v0.1.0
+#     commit: 5c6b18069e940f0ef4aa43f20d30e0891a7750cd
+# once that tag contains the packaging files, or a newer release tag/commit.
+id: io.github.mo999salah.wali
+runtime: org.gnome.Platform
+runtime-version: "50"
+sdk: org.gnome.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+command: wali
+finish-args:
+  # WhatsApp Web and the GitHub update checker.
+  - --share=network
+  # WebKitGTK / GTK shared-memory paths.
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  # Hardware-accelerated WebKit rendering.
+  - --device=dri
+  # WebKitGTK plays and records audio through PulseAudio/PipeWire (voice notes).
+  - --socket=pulseaudio
+  # Wali writes inbound files to the user Downloads directory.
+  - --filesystem=xdg-download
+  # StatusNotifier tray used by Wali.
+  - --talk-name=org.kde.StatusNotifierWatcher
+  # notify-rust talks to the session Notifications name, not a portal rewrite.
+  - --talk-name=org.freedesktop.Notifications
+  # tauri-plugin-single-instance owns identifier.SingleInstance on the session bus.
+  - --own-name=io.github.mo999salah.wali.SingleInstance
+cleanup:
+  - /include
+  - /lib/pkgconfig
+  - /lib/cmake
+  - /share/pkgconfig
+  - /share/gtk-doc
+modules:
+  # GNOME 50 has GTK 3 and webkit2gtk-4.1. Tray needs Ayatana, which the runtime
+  # does not ship. Headers stay until Wali links; top-level cleanup strips them.
+  - shared-modules/libayatana-appindicator/libayatana-appindicator-gtk3.json
+  - name: wali
+    buildsystem: simple
+    build-options:
+      append-path: /usr/lib/sdk/rust-stable/bin
+      env:
+        CARGO_HOME: /run/build/wali/cargo
+        CARGO_NET_OFFLINE: "true"
+        PKG_CONFIG_PATH: /app/lib/pkgconfig:/app/lib64/pkgconfig:/app/lib/x86_64-linux-gnu/pkgconfig
+    sources:
+      - type: dir
+        path: ../..
+      - cargo-sources.json
+      - type: file
+        path: io.github.mo999salah.wali.desktop
+    build-commands:
+      - rm -rf src-tauri/target target
+      - mkdir -p src-tauri/.cargo
+      - |
+        cfg=$(printf '%s\n' \
+          '[source.vendored-sources]' \
+          'directory = "/run/build/wali/cargo/vendor"' \
+          '' \
+          '[source.crates-io]' \
+          'replace-with = "vendored-sources"')
+        printf '%s\n' "$cfg" > cargo/config
+        printf '%s\n' "$cfg" > src-tauri/.cargo/config.toml
+      - cargo --offline fetch --manifest-path src-tauri/Cargo.toml --verbose
+      - cargo --offline build --release --manifest-path src-tauri/Cargo.toml
+      - install -Dm755 src-tauri/target/release/wali ${FLATPAK_DEST}/bin/wali
+      - install -Dm644 io.github.mo999salah.wali.desktop ${FLATPAK_DEST}/share/applications/${FLATPAK_ID}.desktop
+      - install -Dm644 src-tauri/linux/io.github.mo999salah.wali.metainfo.xml ${FLATPAK_DEST}/share/metainfo/${FLATPAK_ID}.metainfo.xml
+      - |
+        for size in 16 22 24 32 48 64 128 256 512; do
+          install -Dm644 "src-tauri/icons/${size}x${size}.png" \
+            "${FLATPAK_DEST}/share/icons/hicolor/${size}x${size}/apps/${FLATPAK_ID}.png"
+          ln -sf "${FLATPAK_ID}.png" \
+            "${FLATPAK_DEST}/share/icons/hicolor/${size}x${size}/apps/wali.png"
+        done
